@@ -1,0 +1,81 @@
+{% block label %}
+    {% if field.label %}
+        {% set hint = field.help ? 'data-hint="' ~ field.help|tu|raw ~ '"': '' %}
+        <div class="form-label form-field hint--bottom" {{ hint }}>{{ field.label|tu|raw }}</div>
+    {% endif %}
+{% endblock %}
+
+{% block field %}
+    <style>
+        .milkdown {
+            min-height: 500px;
+
+            .label {
+                background: unset;
+                color: var(--crepe-color-outline);;
+            }
+        }
+
+        .milkdown-editor {
+            position: relative;
+            z-index: 100;
+        }
+    </style>
+
+    <div class="form-field {{ field.classes|default('') }}">
+        <div class="form-data">
+            <textarea name="{{ (scope ~ field.name)|fieldName }}"
+                      hidden="hidden">{{ value|join("\n")|e("html") }}</textarea>
+
+            <div class="milkdown-editor" id="milkdown-{{ (scope ~ field.name)|fieldName }}"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        const textAreaSelector = "textarea[name='{{ (scope ~ field.name)|fieldName }}']";
+        const Crepe = milkdown.crepe();
+
+        let features = [];
+        {% if not milkdown_config.latex %}
+        features[Crepe.Feature.Latex] = false;
+        {% endif %}
+
+
+        const crepe = new Crepe({
+            root: document.getElementById('milkdown-{{ (scope ~ field.name)|fieldName }}'),
+            defaultValue: document.querySelector(textAreaSelector).value,
+            features: features,
+            featureConfigs: {
+                [Crepe.Feature.ImageBlock]: {
+                    onUpload: async (file) => {
+                        const adminNonce = document.querySelector("[name='admin-nonce']").value;
+
+                        const formData = new FormData();
+                        formData.append('file', file);
+                        formData.append('name', file.name)
+                        formData.append('admin-nonce', adminNonce);
+
+                        const response = await fetch('{{ base_url ~form.getMediaTaskRoute() }}/task:addmedia', {
+                            method: 'POST',
+                            body: formData,
+                        });
+
+                        if (!response.ok) {
+                            throw new Error('Upload failed');
+                        }
+
+                        return '{{ url(context.relativePagePath) }}/' + encodeURI(file.name);
+                    }
+                },
+            }
+        });
+
+        crepe.on((listener) => {
+            listener.markdownUpdated(function () {
+                document.querySelector(textAreaSelector).value = crepe.getMarkdown();
+            });
+        });
+
+        crepe.create()
+    </script>
+{% endblock %}

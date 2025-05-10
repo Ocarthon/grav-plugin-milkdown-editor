@@ -1,0 +1,65 @@
+name: Release Build
+
+on:
+    workflow_dispatch:
+        inputs:
+            version:
+                description: 'Version number (e.g., 1.0.0)'
+                required: true
+                type: string
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+
+        steps:
+            -   name: Checkout code
+                uses: actions/checkout@v4
+
+            -   name: Install dependencies
+                run: npm install
+
+            -   name: Build project
+                run: npm run build
+
+            -   name: Update version in blueprints.yaml
+                run: sed -i "s/<version>/${{ github.event.inputs.version }}/g" blueprints.yaml
+
+            -   name: Create release archive
+                run: |
+                    zip -r milkdown-editor.zip . -x "node_modules/*" ".git/*" ".github/*"
+
+            -   name: Configure Git
+                run: |
+                    git config --global user.name "${GITHUB_ACTOR}"
+                    git config --global user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+
+            -   name: Commit to release branch
+                run: |
+                    # Create and switch to release branch
+                    git fetch origin release || true
+                    git checkout release || git checkout -b release
+                    
+                    # Make sure we have latest changes
+                    git reset --hard origin/main
+                    
+                    # Add built files
+                    git add -f * || true
+                    
+                    # Commit if there are changes
+                    git commit -m "Release v${{ github.event.inputs.version }}"
+                    
+                    # Push changes
+                    git push origin release --force
+
+
+            -   name: Create GitHub Release
+                uses: softprops/action-gh-release@v1
+                with:
+                    tag_name: v${{ github.event.inputs.version }}
+                    name: Release v${{ github.event.inputs.version }}
+                    target_commitish: release
+                    draft: false
+                    prerelease: false
+                env:
+                    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

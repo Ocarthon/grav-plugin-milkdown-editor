@@ -1,0 +1,11 @@
+name: Milkdown Editor Integration
+version: 0.1.0
+description: Milkdown is a WYSIWYG Markdown Editor
+icon: edit
+author:
+  name: Ocarthon
+  url: https://github.com/Ocarthon
+keywords: markdown, wysiwyg, editor, integration, plugin
+bugs: https://github.com/Ocarthon/grav-plugin-markdown-editor/issues
+docs: https://github.com/newbthenewbd/grav-plugin-markdown-editor/blob/main/README.md
+license: MIT License
